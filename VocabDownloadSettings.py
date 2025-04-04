@@ -4,8 +4,6 @@ from typing import Optional, Dict, Any, List
 
 @dataclass
 class VocabDownloadSettings:
-    cdm_catalog: str
-    cdm_schema: str
     sqlite_path: str
     log_path: str
     batch_size: int

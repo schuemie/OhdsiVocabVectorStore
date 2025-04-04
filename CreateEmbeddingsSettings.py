@@ -7,9 +7,10 @@ class CreateEmbeddingsSettings:
     sqlite_path: str
     log_path: str
     batch_size: int
-    parquet_path: str
+    parquet_folder: str
     use_synonyms: bool
     use_mapped_terms: bool
+    max_text_characters: int
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         if config is None:

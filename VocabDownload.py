@@ -15,18 +15,14 @@ from VocabDownloadSettings import VocabDownloadSettings
 load_dotenv()
 
 
-def create_connection_string(settings: VocabDownloadSettings) -> str:
-    server_hostname = os.getenv("DATABRICKS_SERVER_HOSTNAME")
-    http_path = os.getenv("DATABRICKS_HTTP_PATH")
-    access_token = os.getenv("DATABRICKS_TOKEN")
-    url = (
-        f"databricks://token:{access_token}@{server_hostname}?"
-        f"http_path={http_path}&catalog={settings.cdm_catalog}&schema={settings.cdm_schema}"
-    )
-    return url
-
-
 def create_query(engine: Engine, domain_ids: List[str]) -> select:
+    """
+    Create a SQLAlchemy query to fetch concept names, synonyms, and mapped concepts from the source database.
+    :param engine: SQLAlchemy engine connected to the source database.
+    :param domain_ids: List of domain IDs to filter the concepts.
+    :return: SQLAlchemy select object representing the query.
+    """
+
     metadata = MetaData()
 
     concept = Table('concept', metadata, autoload_with=engine)
@@ -54,6 +50,9 @@ def create_query(engine: Engine, domain_ids: List[str]) -> select:
         concept, concept_synonym.c.concept_id == concept.c.concept_id
     ).where(
         concept.c.standard_concept == 'S'
+    ).group_by(
+        concept_synonym.c.concept_id,
+        concept_synonym.c.concept_synonym_name
     )
 
     if domain_ids:
@@ -74,6 +73,9 @@ def create_query(engine: Engine, domain_ids: List[str]) -> select:
         target_concept.c.standard_concept == 'S',
         concept_relationship.c.relationship_id == 'Maps to',
         target_concept.c.concept_id != source_concept.c.concept_id
+    ).group_by(
+        target_concept.c.concept_id,
+        source_concept.c.concept_name
     )
 
     if domain_ids:
@@ -88,8 +90,8 @@ def main(args: List[str]):
         config = yaml.safe_load(file)
     settings = VocabDownloadSettings(config)
     open_log(settings.log_path)
-
-    source_engine = create_engine(create_connection_string(settings))
+    logging.info("Starting downloading vocabularies")
+    source_engine = create_engine(os.getenv("source_connection_string"))
     query = create_query(engine=source_engine, domain_ids=settings.domain_ids)
 
     target_engine = create_engine(f"sqlite:///{settings.sqlite_path}")
@@ -113,6 +115,7 @@ def main(args: List[str]):
                 transaction.commit()
             total_inserted += len(rows)
             logging.info(f"Inserted {len(rows)} rows, total inserted: {total_inserted}")
+    logging.info("Finished downloading vocabularies")
 
 
 if __name__ == "__main__":

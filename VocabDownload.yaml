@@ -1,6 +1,4 @@
 system:
-  cdm_catalog: merative_ccae
-  cdm_schema: cdm_merative_ccae_v3046
   sqlite_path: e:/temp/VocabVectorStore/Vocab.sqlite
   log_path: e:/temp/VocabVectorStore/logVocabDownload.txt
   batch_size: 1000

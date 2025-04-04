@@ -5,7 +5,6 @@ import sys
 from typing import List
 
 import numpy as np
-import openai
 import pyarrow as pa
 import pyarrow.parquet as pq
 import requests
@@ -25,10 +24,19 @@ def create_query(engine: Engine, use_mapped_terms: bool, use_synonyms: bool) -> 
     metadata = MetaData()
     terms = Table('terms', metadata, autoload_with=engine)
 
-    query = select(
+    unique_names = select(
         terms.c.concept_id,
-        func.group_concat(terms.c.concept_name, '; ').label('concatenated_terms')
-    ).group_by(terms.c.concept_id)
+        terms.c.concept_name,
+    ).group_by(
+        terms.c.concept_id,
+        terms.c.concept_name
+    ).subquery()
+    query = select(
+        unique_names.c.concept_id,
+        func.group_concat(unique_names.c.concept_name, '; ').label('concatenated_terms')
+    ).group_by(
+        unique_names.c.concept_id
+    )
     if not use_mapped_terms:
         query = query.where(terms.c.source != 'mapped')
     if not use_synonyms:
@@ -77,25 +85,32 @@ def main(args: List[str]):
         config = yaml.safe_load(file)
     settings = CreateEmbeddingsSettings(config)
     open_log(settings.log_path)
+    logging.info("Starting to create embedding vectors")
+    os.makedirs(settings.parquet_folder, exist_ok=True)
 
     engine = create_engine(f"sqlite:///{settings.sqlite_path}")
     query = create_query(engine=engine, use_synonyms=settings.use_synonyms, use_mapped_terms=settings.use_mapped_terms)
 
-    total_embeddings = 0
+    total_count = 0
     with engine.connect() as connection:
         result_proxy = connection.execute(query)
         while True:
             chunk = result_proxy.fetchmany(settings.batch_size)
             if not chunk:
                 break
-            texts = [row.concatenated_terms for row in chunk]
-            concept_ids = [row.concept_id for row in chunk]
-            embeddings = create_embedding(texts)
-            store_in_parquet(concept_ids=concept_ids,
-                             embeddings=embeddings,
-                             file_name=settings.parquet_path)
-            total_embeddings += len(chunk)
-            logging.info(f"Created {len(chunk)} embedding vectors, total: {total_embeddings}")
+            file_name = f"EmbeddingVectors{total_count + 1}_{total_count + len(chunk)}.parquet"
+            file_name = os.path.join(settings.parquet_folder, file_name)
+            if not os.path.isfile(file_name):
+                texts = [row.concatenated_terms for row in chunk]
+                concept_ids = [row.concept_id for row in chunk]
+                texts = [t[:settings.max_text_characters] for t in texts]
+                embeddings = create_embedding(texts)
+                store_in_parquet(concept_ids=concept_ids,
+                                 embeddings=embeddings,
+                                 file_name=file_name)
+            total_count += len(chunk)
+            logging.info(f"Created {len(chunk)} embedding vectors, total: {total_count}")
+    logging.info("Finished creating embedding vectors")
 
 
 if __name__ == "__main__":
