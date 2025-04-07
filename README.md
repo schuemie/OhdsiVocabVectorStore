@@ -107,3 +107,5 @@ CREATE INDEX ON vocab_vectors_schema.vocab_vectors_table USING hnsw (embedding h
 
 Where `vocab_vectors_schema` is the schema where the vectors are stored and `vocab_vectors_table` is the table name.
 
+Note that, on Windows, the maximum maintenance work memory is 1.9GB, until Postgres 18: https://commitfest.postgresql.org/patch/5343/
+
