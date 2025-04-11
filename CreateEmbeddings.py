@@ -84,10 +84,11 @@ def main(args: List[str]):
     with open(args[0]) as file:
         config = yaml.safe_load(file)
     settings = CreateEmbeddingsSettings(config)
-    open_log(settings.log_path)
-    logging.info("Starting to create embedding vectors")
     os.makedirs(settings.parquet_folder, exist_ok=True)
+    os.makedirs(os.path.dirname(settings.log_path), exist_ok=True)
+    open_log(settings.log_path)
 
+    logging.info("Starting to create embedding vectors")
     engine = create_engine(f"sqlite:///{settings.sqlite_path}")
     query = create_query(engine=engine, use_synonyms=settings.use_synonyms, use_mapped_terms=settings.use_mapped_terms)
 

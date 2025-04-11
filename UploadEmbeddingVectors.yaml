@@ -2,6 +2,6 @@ system:
   log_path: e:/temp/VocabVectorStore/logUploadEmbeddings.txt
   parquet_folder: e:/temp/VocabVectorStore/Embeddings
 vector_store:
-  schema: vocab_vectors
-  table: vocab_vectors
-  store_type: stpgvector_halfvec
+  schema: vocabulary
+  table: concept_vector
+  store_type: vector_halfvec

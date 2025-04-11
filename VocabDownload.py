@@ -15,7 +15,9 @@ from VocabDownloadSettings import VocabDownloadSettings
 load_dotenv()
 
 
-def create_query(engine: Engine, domain_ids: List[str]) -> select:
+def create_query(engine: Engine,
+                 domain_ids: List[str],
+                 include_classification_concepts: bool) -> select:
     """
     Create a SQLAlchemy query to fetch concept names, synonyms, and mapped concepts from the source database.
     :param engine: SQLAlchemy engine connected to the source database.
@@ -29,13 +31,17 @@ def create_query(engine: Engine, domain_ids: List[str]) -> select:
     concept_synonym = Table('concept_synonym', metadata, autoload_with=engine)
     concept_relationship = Table('concept_relationship', metadata, autoload_with=engine)
 
+    standard_concepts = ['S']
+    if include_classification_concepts:
+        standard_concepts.append('C')
+
     # Get concept names
     query1 = select(
         concept.c.concept_id,
         concept.c.concept_name,
         cast('name', String).label('source')
     ).where(
-        concept.c.standard_concept == 'S'
+        concept.c.standard_concept.in_(standard_concepts)
     )
 
     if domain_ids:
@@ -49,7 +55,7 @@ def create_query(engine: Engine, domain_ids: List[str]) -> select:
     ).select_from(concept_synonym).join(
         concept, concept_synonym.c.concept_id == concept.c.concept_id
     ).where(
-        concept.c.standard_concept == 'S'
+        concept.c.standard_concept.in_(standard_concepts)
     ).group_by(
         concept_synonym.c.concept_id,
         concept_synonym.c.concept_synonym_name
@@ -70,7 +76,7 @@ def create_query(engine: Engine, domain_ids: List[str]) -> select:
     ).join(
         source_concept, concept_relationship.c.concept_id_1 == source_concept.c.concept_id
     ).where(
-        target_concept.c.standard_concept == 'S',
+        target_concept.c.standard_concept.in_(standard_concepts),
         concept_relationship.c.relationship_id == 'Maps to',
         target_concept.c.concept_id != source_concept.c.concept_id
     ).group_by(
@@ -89,10 +95,14 @@ def main(args: List[str]):
     with open(args[0]) as file:
         config = yaml.safe_load(file)
     settings = VocabDownloadSettings(config)
+    os.makedirs(os.path.dirname(settings.log_path), exist_ok=True)
+    os.makedirs(os.path.dirname(settings.sqlite_path), exist_ok=True)
     open_log(settings.log_path)
     logging.info("Starting downloading vocabularies")
     source_engine = create_engine(os.getenv("source_connection_string"))
-    query = create_query(engine=source_engine, domain_ids=settings.domain_ids)
+    query = create_query(engine=source_engine,
+                         domain_ids=settings.domain_ids,
+                         include_classification_concepts=settings.include_classification_concepts)
 
     target_engine = create_engine(f"sqlite:///{settings.sqlite_path}")
     metadata = MetaData()

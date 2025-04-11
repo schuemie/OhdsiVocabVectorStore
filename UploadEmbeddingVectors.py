@@ -17,7 +17,6 @@ from Logging import open_log
 load_dotenv()
 
 
-
 def get_vector_size(parquet_folder: str):
     """
     Get the size of the vector from the first Parquet file in the folder.
@@ -32,7 +31,7 @@ def get_vector_size(parquet_folder: str):
 
 def create_table_in_pgvector(conn: connection, schema: str, table: str, vector_type: str, dimensions: int):
     statement = sql.SQL(
-        "CREATE TABLE IF NOT EXISTS {schema}.{table} (concept_id INT PRIMARY KEY, embedding {vector_type}({dimensions}))").format(
+        "CREATE TABLE IF NOT EXISTS {schema}.{table} (concept_id INT PRIMARY KEY, embedding_vector {vector_type}({dimensions}))").format(
         vector_type=sql.SQL(vector_type),
         schema=sql.Identifier(schema),
         table=sql.Identifier(table),
@@ -52,7 +51,7 @@ def load_vectors_in_pgvector(settings: UploadEmbeddingVectorsSettings):
     create_table_in_pgvector(conn, settings.schema, settings.table, vector_type, vector_size)
 
     cur = conn.cursor()
-    statement = sql.SQL("COPY {schema}.{table} (concept_id, embedding) FROM STDIN WITH (FORMAT BINARY)").format(
+    statement = sql.SQL("COPY {schema}.{table} (concept_id, embedding_vector) FROM STDIN WITH (FORMAT BINARY)").format(
         schema=sql.Identifier(settings.schema),
         table=sql.Identifier(settings.table)
     )
@@ -96,6 +95,7 @@ def main(args: List[str]):
     with open(args[0]) as file:
         config = yaml.safe_load(file)
     settings = UploadEmbeddingVectorsSettings(config)
+    os.makedirs(os.path.dirname(settings.log_path), exist_ok=True)
     open_log(settings.log_path)
     logging.info("Starting uploading embedding vectors")
     load_vectors_in_pgvector(settings=settings)

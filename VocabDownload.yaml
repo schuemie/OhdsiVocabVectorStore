@@ -4,4 +4,4 @@ system:
   batch_size: 1000
 content:
   domain_ids:
-    - Condition
+  include_classification_concepts: true
