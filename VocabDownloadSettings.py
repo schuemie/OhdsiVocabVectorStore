@@ -9,6 +9,7 @@ class VocabDownloadSettings:
     batch_size: int
     domain_ids: List[str]
     include_classification_concepts: bool
+    exclude_vocabulary_ids: List[str]
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         if config is None:

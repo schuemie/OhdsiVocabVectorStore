@@ -5,3 +5,5 @@ system:
 content:
   domain_ids:
   include_classification_concepts: true
+  exclude_vocabulary_ids:
+    - SPL

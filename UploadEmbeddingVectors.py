@@ -42,7 +42,7 @@ def create_table_in_pgvector(conn: connection, schema: str, table: str, vector_t
 def load_vectors_in_pgvector(settings: UploadEmbeddingVectorsSettings):
     conn = psycopg.connect(conninfo=os.getenv("target_connection_string"),
                            autocommit=True)
-    conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
+    # conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
     register_vector(conn)
     vector_type = "vector" if settings.store_type == settings.PGVECTOR else "halfvec"
 

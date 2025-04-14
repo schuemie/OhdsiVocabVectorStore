@@ -17,7 +17,8 @@ load_dotenv()
 
 def create_query(engine: Engine,
                  domain_ids: List[str],
-                 include_classification_concepts: bool) -> select:
+                 include_classification_concepts: bool,
+                 exclude_vocabulary_ids: List[str]) -> select:
     """
     Create a SQLAlchemy query to fetch concept names, synonyms, and mapped concepts from the source database.
     :param engine: SQLAlchemy engine connected to the source database.
@@ -46,6 +47,8 @@ def create_query(engine: Engine,
 
     if domain_ids:
         query1 = query1.where(concept.c.domain_id.in_(domain_ids))
+    if exclude_vocabulary_ids:
+        query1 = query1.where(concept.c.vocabulary_id.notin_(exclude_vocabulary_ids))
 
     # Get concept synonyms
     query2 = select(
@@ -63,6 +66,8 @@ def create_query(engine: Engine,
 
     if domain_ids:
         query2 = query2.where(concept.c.domain_id.in_(domain_ids))
+    if exclude_vocabulary_ids:
+        query2 = query2.where(concept.c.vocabulary_id.notin_(exclude_vocabulary_ids))
 
     # Get mapped concepts
     target_concept = aliased(concept)
@@ -86,6 +91,8 @@ def create_query(engine: Engine,
 
     if domain_ids:
         query3 = query3.where(target_concept.c.domain_id.in_(domain_ids))
+    if exclude_vocabulary_ids:
+        query3 = query3.where(target_concept.c.vocabulary_id.notin_(exclude_vocabulary_ids))
 
     final_query = union_all(query1, query2, query3)
     return final_query
@@ -102,7 +109,8 @@ def main(args: List[str]):
     source_engine = create_engine(os.getenv("source_connection_string"))
     query = create_query(engine=source_engine,
                          domain_ids=settings.domain_ids,
-                         include_classification_concepts=settings.include_classification_concepts)
+                         include_classification_concepts=settings.include_classification_concepts,
+                         exclude_vocabulary_ids=settings.exclude_vocabulary_ids)
 
     target_engine = create_engine(f"sqlite:///{settings.sqlite_path}")
     metadata = MetaData()
