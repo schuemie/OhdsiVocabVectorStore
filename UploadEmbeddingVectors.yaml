@@ -1,7 +1,0 @@
-system:
-  log_path: e:/temp/VocabVectorStore/logUploadEmbeddingsOhda.txt
-  parquet_folder: e:/temp/VocabVectorStore/Embeddings
-vector_store:
-  schema: vocabulary_20240229
-  table: concept_vector
-  store_type: vector_halfvec

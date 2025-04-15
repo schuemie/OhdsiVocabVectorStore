@@ -1,9 +1,0 @@
-system:
-  sqlite_path: e:/temp/VocabVectorStore/Vocab.sqlite
-  log_path: e:/temp/VocabVectorStore/logCreateEmbeddings.txt
-  batch_size: 100
-  parquet_folder: e:/temp/VocabVectorStore/Embeddings
-text:
-  use_synonyms: true
-  use_mapped_terms: true
-  max_text_characters: 10000

@@ -3,11 +3,24 @@ from typing import Optional, Dict, Any, List
 
 
 @dataclass
-class UploadEmbeddingVectorsSettings:
-    log_path: str
-    parquet_folder: str
+class Settings:
+    log_folder: str
+    terms_db_path: str
+    download_batch_size: int
+    embeddings_folder: str
+    embedding_batch_size: int
+
+    domain_ids: List[str]
+    include_classification_concepts: bool
+    classification_vocabularies: List[str]
+    concatenate_synonyms: bool
+    include_mapped_terms: bool
+    max_text_characters: int
+    restrict_to_used_concepts: bool
+
     schema: str
-    table: str
+    vector_table: str
+    record_count_table: str
     store_type: str
 
     PGVECTOR = "pgvector"
@@ -19,7 +32,10 @@ class UploadEmbeddingVectorsSettings:
         system = config["system"]
         for key, value in system.items():
             setattr(self, key, value)
-        vector_store = config["vector_store"]
+        vector_store = config["terms"]
+        for key, value in vector_store.items():
+            setattr(self, key, value)
+        vector_store = config["database_details"]
         for key, value in vector_store.items():
             setattr(self, key, value)
 

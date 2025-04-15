@@ -1,0 +1,21 @@
+system:
+  log_folder: e:/temp/VocabVectorStore
+  terms_db_path: e:/temp/VocabVectorStore/Vocab.sqlite
+  download_batch_size: 1000
+  embeddings_folder: e:/temp/VocabVectorStore/Embeddings
+  embedding_batch_size: 100
+terms:
+  domain_ids:
+  include_classification_concepts: true
+  classification_vocabularies:
+    - ATC
+    - MedDRA
+  concatenate_synonyms: true
+  include_mapped_terms: true
+  max_text_characters: 10000
+  restrict_to_used_concepts: true
+database_details:
+  schema: vocabulary
+  vector_table: concept_vector
+  record_count_table: concept_record_count
+  store_type: vector_halfvec

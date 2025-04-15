@@ -1,9 +1,0 @@
-system:
-  sqlite_path: e:/temp/VocabVectorStore/Vocab.sqlite
-  log_path: e:/temp/VocabVectorStore/logVocabDownload.txt
-  batch_size: 1000
-content:
-  domain_ids:
-  include_classification_concepts: true
-  exclude_vocabulary_ids:
-    - SPL
