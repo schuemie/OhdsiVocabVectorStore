@@ -120,10 +120,9 @@ SELECT phase, round(100.0 * blocks_done / nullif(blocks_total, 0), 1) AS "%" FRO
 
 Finally, we also create indices on the concept id and standard concept id columns, to speed up queries.
 
-```sql```
+```sql
 CREATE INDEX ON vocab_vectors_schema.concept_vector(concept_id);
 CREATE INDEX ON vocab_vectors_schema.concept_vector(standard_concept_id);
-
 ```
 
 

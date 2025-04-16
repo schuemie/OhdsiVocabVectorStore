@@ -64,7 +64,6 @@ def load_vectors_in_pgvector(settings: Settings):
         total_count = 0
         file_list = sorted([f for f in os.listdir(settings.embeddings_folder) if f.endswith(".parquet")])
         for i in tqdm(range(0, len(file_list))):
-        # for i in tqdm(range(0, 10)):
             file_name = file_list[i]
             logging.info(f"Processing Parquet file '{file_name}'")
             file_path = os.path.join(settings.embeddings_folder, file_name)

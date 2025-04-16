@@ -15,7 +15,7 @@ terms:
   max_text_characters: 10000
   restrict_to_used_concepts: true
 database_details:
-  schema: vocabulary
+  schema: vocabulary_feb2024
   vector_table: concept_vector
   record_count_table: concept_record_count
   store_type: vector_halfvec
