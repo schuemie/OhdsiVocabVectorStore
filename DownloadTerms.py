@@ -35,19 +35,10 @@ def create_query(engine: Engine,
     standard_concepts = ['S']
     if settings.include_classification_concepts:
         standard_concepts.append('C')
-    if settings.restrict_to_used_concepts:
-        concept_record_count = Table('concept_record_count',
-                                     metadata,
-                                     schema=settings.schema,
-                                     autoload_with=engine)
-    else:
-        concept_record_count = None
-
 
     # Get concept names
     query1 = select(
         concept.c.concept_id,
-        concept.c.concept_id.label("standard_concept_id"),
         concept.c.concept_name,
         cast('name', String).label('source')
     ).where(
@@ -59,66 +50,57 @@ def create_query(engine: Engine,
         query1 = query1.where(or_(concept.c.standard_concept == 'S',
                                   concept.c.vocabulary_id.in_(settings.classification_vocabularies)))
     if settings.restrict_to_used_concepts:
+        concept_record_count = Table('concept_record_count',
+                                     metadata,
+                                     schema=settings.schema,
+                                     autoload_with=engine)
         query1 = query1.join(
             concept_record_count, concept.c.concept_id == concept_record_count.c.concept_id
         )
 
+    standard_concept_ids = query1.subquery()
+
     # Get concept synonyms
     query2 = select(
         concept_synonym.c.concept_id,
-        concept_synonym.c.concept_id.label("standard_concept_id"),
         concept_synonym.c.concept_synonym_name.label('concept_name'),
         cast('synonym', String).label('source')
-    ).select_from(concept_synonym).join(
-        concept, concept_synonym.c.concept_id == concept.c.concept_id
     ).where(
-        concept.c.standard_concept.in_(standard_concepts)
-    ).group_by(
-        concept_synonym.c.concept_id,
-        concept_synonym.c.concept_synonym_name
+        concept_synonym.c.concept_id.in_(select(standard_concept_ids.c.concept_id)),
     )
-    if settings.domain_ids:
-        query2 = query2.where(concept.c.domain_id.in_(settings.domain_ids))
-    if settings.classification_vocabularies:
-        query2 = query2.where(or_(concept.c.standard_concept == 'S',
-                                  concept.c.vocabulary_id.in_(settings.classification_vocabularies)))
-    if settings.restrict_to_used_concepts:
-        query2 = query2.join(
-            concept_record_count, concept.c.concept_id == concept_record_count.c.concept_id
-        )
 
     # Get mapped concepts
-    target_concept = aliased(concept)
-    source_concept = aliased(concept)
-    query3 = select(
-        source_concept.c.concept_id,
-        target_concept.c.concept_id.label("standard_concept_id"),
-        source_concept.c.concept_name.label('concept_name'),
-        cast('mapped', String).label('source')
-    ).select_from(target_concept).join(
-        concept_relationship, target_concept.c.concept_id == concept_relationship.c.concept_id_2
+    mapped_concept_ids = select(
+        concept_relationship.c.concept_id_1.label('concept_id')
     ).join(
-        source_concept, concept_relationship.c.concept_id_1 == source_concept.c.concept_id
+        standard_concept_ids, concept_relationship.c.concept_id_2 == standard_concept_ids.c.concept_id
     ).where(
-        target_concept.c.standard_concept.in_(standard_concepts),
-        concept_relationship.c.relationship_id == 'Maps to',
-        target_concept.c.concept_id != source_concept.c.concept_id
+        concept_relationship.c.relationship_id == 'Maps to'
     ).group_by(
-        source_concept.c.concept_id,
-        target_concept.c.concept_id,
-        source_concept.c.concept_name
-    )
-    if settings.domain_ids:
-        query3 = query3.where(target_concept.c.domain_id.in_(settings.domain_ids))
-    if settings.classification_vocabularies:
-        query3 = query3.where(or_(target_concept.c.standard_concept == 'S',
-                                  target_concept.c.vocabulary_id.in_(settings.classification_vocabularies)))
-    if settings.restrict_to_used_concepts:
-        query3 = query3.join(
-            concept_record_count, target_concept.c.concept_id == concept_record_count.c.concept_id
-        )
+        concept_relationship.c.concept_id_1
+    ).subquery()
 
-    final_query = union_all(query1, query2, query3)
+    query3 = select(
+        concept.c.concept_id,
+        concept.c.concept_name,
+        cast('mapped', String).label('source')
+    ).where(
+        concept.c.concept_id.in_(select(mapped_concept_ids.c.concept_id)),
+    ).group_by(
+        concept.c.concept_id,
+        concept.c.concept_name
+    )
+
+    # Get synonyms for mapped concepts
+    query4 = select(
+        concept_synonym.c.concept_id,
+        concept_synonym.c.concept_synonym_name.label('concept_name'),
+        cast('mapped synonym', String).label('source')
+    ).where(
+        concept_synonym.c.concept_id.in_(select(mapped_concept_ids.c.concept_id)),
+    )
+
+    final_query = union_all(query1, query2, query3, query4)
     return final_query
 
 
@@ -153,7 +135,6 @@ def main(args: List[str]):
     metadata = MetaData()
     terms_table = Table('terms', metadata,
                         Column('concept_id', Integer),
-                        Column('standard_concept_id', Integer),
                         Column('concept_name', String),
                         Column('source', String))
     metadata.create_all(bind=target_engine, tables=[terms_table])

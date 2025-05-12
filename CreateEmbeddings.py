@@ -11,7 +11,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 from numpy import ndarray
-from sqlalchemy import create_engine, select, MetaData, Table, func
+from sqlalchemy import create_engine, select, MetaData, Table, func, and_
 from sqlalchemy.engine import Engine
 
 from Settings import Settings
@@ -22,37 +22,33 @@ load_dotenv()
 
 def create_query(engine: Engine, settings: Settings) -> select:
     metadata = MetaData()
-    terms = Table('terms', metadata, autoload_with=engine)
+    terms = Table("terms", metadata, autoload_with=engine)
 
     unique_names = select(
         terms.c.concept_id,
-        terms.c.standard_concept_id,
-        terms.c.concept_name,
+        terms.c.concept_name
     ).group_by(
         terms.c.concept_id,
-        terms.c.standard_concept_id,
         terms.c.concept_name
     ).subquery()
     query = select(
         unique_names.c.concept_id,
-        unique_names.c.standard_concept_id,
-        func.group_concat(unique_names.c.concept_name, '; ').label('concatenated_terms')
+        func.group_concat(unique_names.c.concept_name, "; ").label("concatenated_terms")
     ).group_by(
-        unique_names.c.concept_id,
-        unique_names.c.standard_concept_id,
+        unique_names.c.concept_id
     )
     if not settings.concatenate_synonyms:
-        query = query.where(terms.c.source != 'synonym')
+        query = query.where(and_(terms.c.source != "synonym", terms.c.source != "mapped synonym"))
     if not settings.include_mapped_terms:
-        query = query.where(terms.c.source != 'mapped')
+        query = query.where(and_(terms.c.source != "mapped", terms.c.source != "mapped synonym"))
     return query
 
 
 def create_embedding(text: List[str]) -> ndarray:
     payload = json.dumps({"input": text})
     headers = {
-        'api-key': os.environ["genai_embed_key"],
-        'Content-Type': 'application/json'
+        "api-key": os.environ["genai_embed_key"],
+        "Content-Type": "application/json"
     }
     response = requests.post(
         os.environ["genai_embed_endpoint"],
@@ -63,25 +59,23 @@ def create_embedding(text: List[str]) -> ndarray:
         logging.error(f"Error: {response.status_code} - {response.text}")
         raise Exception(f"Error: {response.status_code} - {response.text}")
     response_data = response.json()
-    if 'data' not in response_data:
+    if "data" not in response_data:
         logging.error(f"Error: {response_data}")
         raise Exception(f"Error: {response_data}")
-    embeddings = [data['embedding'] for data in response_data['data']]
+    embeddings = [data["embedding"] for data in response_data["data"]]
     embeddings = np.array(embeddings)
     return embeddings
 
 
 def store_in_parquet(concept_ids: List[int],
-                     standard_concept_ids: List[int],
                      embeddings: ndarray,
                      file_name: str) -> None:
     concept_id_array = pa.array(concept_ids)
-    standard_concept_id_array = pa.array(standard_concept_ids)
     embedding_arrays = [pa.array(embeddings[:, i]) for i in range(embeddings.shape[1])]
 
     table = pa.Table.from_arrays(
-        arrays=[concept_id_array, standard_concept_id_array] + embedding_arrays,
-        names=["concept_id", "standard_concept_id"] + [f"embedding_{i}" for i in range(embeddings.shape[1])]
+        arrays=[concept_id_array] + embedding_arrays,
+        names=["concept_id"] + [f"embedding_{i}" for i in range(embeddings.shape[1])]
     )
     pq.write_table(table, file_name)
 
@@ -110,13 +104,9 @@ def main(args: List[str]):
             if not os.path.isfile(file_name):
                 texts = [row.concatenated_terms for row in chunk]
                 concept_ids = [row.concept_id for row in chunk]
-                standard_concept_ids = [row.standard_concept_id for row in chunk]
                 texts = [t[:settings.max_text_characters] for t in texts]
-                # Note: could be made more efficient because source concepts can map to multiple target concepts,
-                # and are now embedded multiple times
                 embeddings = create_embedding(texts)
                 store_in_parquet(concept_ids=concept_ids,
-                                 standard_concept_ids=standard_concept_ids,
                                  embeddings=embeddings,
                                  file_name=file_name)
             total_count += len(chunk)

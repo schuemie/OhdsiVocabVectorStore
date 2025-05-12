@@ -118,11 +118,10 @@ You can keep track of the progress of creating the index using the following com
 SELECT phase, round(100.0 * blocks_done / nullif(blocks_total, 0), 1) AS "%" FROM pg_stat_progress_create_index;
 ````
 
-Finally, we also create indices on the concept id and standard concept id columns, to speed up queries.
+Finally, we also create indices on the concept id column, to speed up queries.
 
 ```sql
 CREATE INDEX ON vocab_vectors_schema.concept_vector(concept_id);
-CREATE INDEX ON vocab_vectors_schema.concept_vector(standard_concept_id);
 ```
 
 
