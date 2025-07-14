@@ -3,8 +3,7 @@ OhdsiVocabVectorStore
 
 These scripts can be used to create embedding vectors for standard concepts in the OHDSI vocabulary, and upload them to a vector store.
 The embedding vectors are not only created for the standard concept name, but (optionally) also for the concept synonyms and source terms mapped to standard concepts.
-Synonyms are simply concatenated to the standard concept name, and the embedding vector is created for the concatenated string.
-Mapped terms have their own embedding vector, and can be used to search for the standard concept.
+Synonyms and mapped terms get their own embedding vectors, and can be used to search for the standard concept.
 Research has shown this helps to improve the performance when searching for concepts in the vocabulary.
 
 The script assumes the vocabulary is stored in a database server, and the embedding vectors are uploaded to a vector store on the same database server.
