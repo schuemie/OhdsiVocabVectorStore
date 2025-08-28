@@ -27,11 +27,11 @@ def get_vector_size(parquet_folder: str):
     file_path = os.path.join(parquet_folder, file_list[0])
     parquet_file = pq.ParquetFile(file_path)
     row_group = parquet_file.read_row_group(0)
-    return row_group.num_columns - 1
+    return row_group.num_columns - 2
 
 def create_table_in_pgvector(conn: connection, schema: str, table: str, vector_type: str, dimensions: int):
     statement = sql.SQL(
-        "CREATE TABLE IF NOT EXISTS {schema}.{table} (concept_id INT, embedding_vector {vector_type}({dimensions}))").format(
+        "CREATE TABLE IF NOT EXISTS {schema}.{table} (concept_id INT, term_type VARCHAR(7), embedding_vector {vector_type}({dimensions}))").format(
         vector_type=sql.SQL(vector_type),
         schema=sql.Identifier(schema),
         table=sql.Identifier(table),
@@ -52,12 +52,12 @@ def load_vectors_in_pgvector(settings: Settings):
     create_table_in_pgvector(conn, settings.schema, settings.vector_table, vector_type, vector_size)
 
     cur = conn.cursor()
-    statement = sql.SQL("COPY {schema}.{table} (concept_id, embedding_vector) FROM STDIN WITH (FORMAT BINARY)").format(
+    statement = sql.SQL("COPY {schema}.{table} (concept_id, term_type, embedding_vector) FROM STDIN WITH (FORMAT BINARY)").format(
         schema=sql.Identifier(settings.schema),
         table=sql.Identifier(settings.vector_table)
     )
     with cur.copy(statement) as copy:
-        copy.set_types(["int4", vector_type])
+        copy.set_types(["int4", "varchar", vector_type])
 
         # Iterate over Parquet files:
         total_count = 0
@@ -70,12 +70,14 @@ def load_vectors_in_pgvector(settings: Settings):
             for row_group_idx in range(parquet_file.num_row_groups):
                 row_group = parquet_file.read_row_group(row_group_idx)
                 concept_ids = row_group.column("concept_id").to_pylist()
-                embedding_columns = [row_group.column(i).to_pylist() for i in range(1, row_group.num_columns)]
+                term_types = row_group.column("term_type").to_pylist()
+                embedding_columns = [row_group.column(i).to_pylist() for i in range(2, row_group.num_columns)]
                 logging.info(f"- Inserting {len(concept_ids)} vectors")
                 # Iterate over rows
                 for j, embedding in enumerate(zip(*embedding_columns)):
                     concept_id = int(concept_ids[j])
-                    copy.write_row([concept_id, embedding])
+                    term_type = term_types[j]
+                    copy.write_row([concept_id, term_type, embedding])
                 total_count = total_count + len(concept_ids)
                 logging.info(f"- Inserted {total_count} vectors in total")
             # Flush data

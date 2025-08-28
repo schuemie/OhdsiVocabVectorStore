@@ -11,7 +11,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 from numpy import ndarray
-from sqlalchemy import create_engine, select, MetaData, Table, func, and_
+from sqlalchemy import create_engine, select, MetaData, Table,  and_, case, cast, String
 from sqlalchemy.engine import Engine
 
 from Settings import Settings
@@ -24,20 +24,16 @@ def create_query(engine: Engine, settings: Settings) -> select:
     metadata = MetaData()
     terms = Table("terms", metadata, autoload_with=engine)
 
-    unique_names = select(
-        terms.c.concept_id,
-        terms.c.concept_name
-    ).group_by(
-        terms.c.concept_id,
-        terms.c.concept_name
-    ).subquery()
     query = select(
-        unique_names.c.concept_id,
-        func.group_concat(unique_names.c.concept_name, "; ").label("concatenated_terms")
-    ).group_by(
-        unique_names.c.concept_id
+        terms.c.concept_id,
+        terms.c.concept_name.label('term'),
+        cast(
+            case(
+            (terms.c.source.in_(["synonym", "mapped synonym"]), "Synonym"),
+            else_="Name"
+        ), String).label("term_type")
     )
-    if not settings.concatenate_synonyms:
+    if not settings.include_synonyms:
         query = query.where(and_(terms.c.source != "synonym", terms.c.source != "mapped synonym"))
     if not settings.include_mapped_terms:
         query = query.where(and_(terms.c.source != "mapped", terms.c.source != "mapped synonym"))
@@ -68,14 +64,16 @@ def create_embedding(text: List[str]) -> ndarray:
 
 
 def store_in_parquet(concept_ids: List[int],
+                     term_types: List[str],
                      embeddings: ndarray,
                      file_name: str) -> None:
     concept_id_array = pa.array(concept_ids)
+    term_type_array = pa.array(term_types)
     embedding_arrays = [pa.array(embeddings[:, i]) for i in range(embeddings.shape[1])]
 
     table = pa.Table.from_arrays(
-        arrays=[concept_id_array] + embedding_arrays,
-        names=["concept_id"] + [f"embedding_{i}" for i in range(embeddings.shape[1])]
+        arrays=[concept_id_array, term_type_array] + embedding_arrays,
+        names=["concept_id", "term_type"] + [f"embedding_{i}" for i in range(embeddings.shape[1])]
     )
     pq.write_table(table, file_name)
 
@@ -102,11 +100,13 @@ def main(args: List[str]):
             file_name = f"EmbeddingVectors{total_count + 1}_{total_count + len(chunk)}.parquet"
             file_name = os.path.join(settings.embeddings_folder, file_name)
             if not os.path.isfile(file_name):
-                texts = [row.concatenated_terms for row in chunk]
+                texts = [row.term for row in chunk]
                 concept_ids = [row.concept_id for row in chunk]
+                term_types = [row.term_type for row in chunk]
                 texts = [t[:settings.max_text_characters] for t in texts]
                 embeddings = create_embedding(texts)
                 store_in_parquet(concept_ids=concept_ids,
+                                 term_types=term_types,
                                  embeddings=embeddings,
                                  file_name=file_name)
             total_count += len(chunk)

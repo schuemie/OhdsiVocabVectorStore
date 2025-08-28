@@ -67,6 +67,7 @@ def create_query(engine: Engine,
         cast('synonym', String).label('source')
     ).where(
         concept_synonym.c.concept_id.in_(select(standard_concept_ids.c.concept_id)),
+        concept_synonym.c.language_concept_id == 4180186  # Only include English synonyms
     )
 
     # Get mapped concepts
@@ -98,6 +99,7 @@ def create_query(engine: Engine,
         cast('mapped synonym', String).label('source')
     ).where(
         concept_synonym.c.concept_id.in_(select(mapped_concept_ids.c.concept_id)),
+        concept_synonym.c.language_concept_id == 4180186  # Only include English synonyms
     )
 
     final_query = union_all(query1, query2, query3, query4)

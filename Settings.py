@@ -13,7 +13,7 @@ class Settings:
     domain_ids: List[str]
     include_classification_concepts: bool
     classification_vocabularies: List[str]
-    concatenate_synonyms: bool
+    include_synonyms: bool
     include_mapped_terms: bool
     max_text_characters: int
     restrict_to_used_concepts: bool
