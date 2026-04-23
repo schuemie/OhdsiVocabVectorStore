@@ -6,16 +6,18 @@ system:
   embedding_batch_size: 100
 terms:
   domain_ids:
-  include_classification_concepts: true
+    - Condition
+    - Observation
+    - Measurement
+    - Procedure
+  include_classification_concepts: false
   classification_vocabularies:
     - ATC
     - MedDRA
-  concatenate_synonyms: true
+  include_synonyms: true
   include_mapped_terms: true
   max_text_characters: 10000
-  restrict_to_used_concepts: true
+  restrict_to_used_concepts: false
 database_details:
-  schema: vocabulary_feb2024
-  vector_table: concept_vector
   record_count_table: concept_record_count
   store_type: vector_halfvec

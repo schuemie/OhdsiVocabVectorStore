@@ -41,7 +41,7 @@ def create_table_in_pgvector(conn: connection, schema: str, table: str, vector_t
 
 def load_vectors_in_pgvector(settings: Settings):
     # Unable to register_vector when using sqlalchemy, so using psycopg directly:
-    conn = psycopg.connect(os.getenv("vocab_connection_string").replace("+psycopg", ""))
+    conn = psycopg.connect(os.getenv("VOCAB_CONNECTION_STRING").replace("+psycopg", ""))
 
     # conn.execute('CREATE EXTENSION IF NOT EXISTS vector')
     register_vector(conn)
@@ -49,12 +49,12 @@ def load_vectors_in_pgvector(settings: Settings):
 
     # Create table if it doesn't exist
     vector_size = get_vector_size(settings.embeddings_folder)
-    create_table_in_pgvector(conn, settings.schema, settings.vector_table, vector_type, vector_size)
+    create_table_in_pgvector(conn, os.getenv("VOCAB_SCHEMA"), os.getenv("VOCAB_VECTOR_TABLE"), vector_type, vector_size)
 
     cur = conn.cursor()
     statement = sql.SQL("COPY {schema}.{table} (concept_id, term_type, embedding_vector) FROM STDIN WITH (FORMAT BINARY)").format(
-        schema=sql.Identifier(settings.schema),
-        table=sql.Identifier(settings.vector_table)
+        schema=sql.Identifier(os.getenv("VOCAB_SCHEMA")),
+        table=sql.Identifier(os.getenv("VOCAB_VECTOR_TABLE"))
     )
     with cur.copy(statement) as copy:
         copy.set_types(["int4", "varchar", vector_type])
@@ -85,8 +85,8 @@ def load_vectors_in_pgvector(settings: Settings):
             pass
 
     query = sql.SQL("SELECT COUNT(*) FROM {schema}.{table}").format(
-        schema=sql.Identifier(settings.schema),
-        table=sql.Identifier(settings.vector_table)
+        schema=sql.Identifier(os.getenv("VOCAB_SCHEMA")),
+        table=sql.Identifier(os.getenv("VOCAB_VECTOR_TABLE"))
     )
     result = cur.execute(query)
     count = result.fetchone()[0]

@@ -15,7 +15,7 @@ The embedding vectors are created using the Azure OpenAI API, but other APIs can
 
 # Pre-requisite
 
-The project is built in python 3.9, and project dependency needs to be installed 
+The project is built in python 3.12, and project dependency needs to be installed 
 
 Create a new Python virtual environment
 
@@ -24,10 +24,10 @@ python -m venv venv;
 source venv/bin/activate;
 ```
 
-Install the packages in requirements.txt
+Install the project and its dependencies using the pyproject.toml file
 
 ```console
-pip install -r requirements.txt
+pip install -e .
 ```
 
 # Modifying settings
@@ -56,24 +56,24 @@ export genai_embed_endpoint="https://genaiapimna.some.com/openai-embeddings/open
 The `CreateConceptRecordCount.py` script creates a table with the concept record counts.
 This script will also aggregate counts across concept ancestors, using the `concept_ancestor` table on the server.
 
-Run the script using the following command:
+Run the script from the repository root using the following command:
 
 ```bash
-PYTHONPATH=./: python CreateConceptRecordCount.py Settings.yaml
+python CreateConceptRecordCountTable.py Settings.yaml
 ```
 
 
 # Download the OHDSI vocabulary concept terms
 
 We must download the names of the concepts in the vocabulary to a local SQLite database. 
-This is done using the `VocabDownload.py` script.
+This is done using the `DownloadTerms.py` script.
 Note that you can specify the domains to download, and whether to include classification concepts in the `Settings.yaml` file.
 If you've created the concept record count table, you can also restrict to standard concepts that are actually used in practice (and source concepts that map to them), by setting the `restrict_to_used_concepts` flag to `True`.
 
 You can run the download script:
 
 ```bash
-PYTHONPATH=./: python DownloadTerms.py Settings.yaml
+python DownloadTerms.py Settings.yaml
 ```
 
 
@@ -85,18 +85,18 @@ The terms are read from the SQLite database created in the previous step, and th
 
 You can run the embedding script:
 ```bash
-PYTHONPATH=./: python CreateEmbeddings.py Settings.yaml
+python CreateEmbeddings.py Settings.yaml
 ```
 
 # Upload the embedding vectors to a vector store
 
-The `UploadEmbeddings.py` script uploads the embedding vectors to a table in the database server.
+The `UploadEmbeddingVectors.py` script uploads the embedding vectors to a table in the database server.
 The table is created in the same schema as the concept record count table, and the name of the table is specified in the `Settings.yaml` file.
 The table will be created if it does not exist.
 
 Run the upload script:
 ```bash
-PYTHONPATH=./: python UploadEmbeddings.py Settings.yaml
+python UploadEmbeddingVectors.py Settings.yaml
 ```
 
 ## Creating the vector index

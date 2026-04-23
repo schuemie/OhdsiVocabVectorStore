@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ohdsi-vocab-vector-store"
+version = "1.0.0"
+description = "Scripts to create embedding vectors for OHDSI vocabulary concepts and upload them to a vector store"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "OHDSI Community"}
+]
+keywords = [
+    "OHDSI",
+    "vocabulary",
+    "embedding",
+    "vector-store",
+    "PostgreSQL"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Database"
+]
+
+dependencies = [
+    "python-dotenv~=1.1.0",
+    "numpy~=1.26.4",
+    "pandas~=2.2.3",
+    "psycopg~=3.2.6",
+    "pyarrow~=19.0.1",
+    "PyYAML~=6.0.2",
+    "SQLAlchemy~=2.0.40",
+    "openai~=1.70.0",
+    "requests~=2.32.3",
+    "pgvector~=0.4.2",
+    "tqdm~=4.67.1"
+]
+
+[project.urls]
+Homepage = "https://github.com/OHDSI/OhdsiVocabVectorStore"
+Repository = "https://github.com/OHDSI/OhdsiVocabVectorStore.git"
+"Bug Tracker" = "https://github.com/OHDSI/OhdsiVocabVectorStore/issues"
+
+[tool.setuptools]
+packages = []
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+py_version = 39
+
+[tool.pylint]
+max-line-length = 100
+

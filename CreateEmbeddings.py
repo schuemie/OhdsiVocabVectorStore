@@ -1,19 +1,17 @@
-import json
 import logging
 import os
 import sys
 from typing import List
 
-import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-import requests
 import yaml
 from dotenv import load_dotenv
 from numpy import ndarray
 from sqlalchemy import create_engine, select, MetaData, Table,  and_, case, cast, String
 from sqlalchemy.engine import Engine
 
+from GenAIApi import get_embedding_vectors
 from Settings import Settings
 from Logging import open_log
 
@@ -38,30 +36,6 @@ def create_query(engine: Engine, settings: Settings) -> select:
     if not settings.include_mapped_terms:
         query = query.where(and_(terms.c.source != "mapped", terms.c.source != "mapped synonym"))
     return query
-
-
-def create_embedding(text: List[str]) -> ndarray:
-    payload = json.dumps({"input": text})
-    headers = {
-        "api-key": os.environ["genai_embed_key"],
-        "Content-Type": "application/json"
-    }
-    response = requests.post(
-        os.environ["genai_embed_endpoint"],
-        headers=headers,
-        data=payload
-    )
-    if response.status_code != 200:
-        logging.error(f"Error: {response.status_code} - {response.text}")
-        raise Exception(f"Error: {response.status_code} - {response.text}")
-    response_data = response.json()
-    if "data" not in response_data:
-        logging.error(f"Error: {response_data}")
-        raise Exception(f"Error: {response_data}")
-    embeddings = [data["embedding"] for data in response_data["data"]]
-    embeddings = np.array(embeddings)
-    return embeddings
-
 
 def store_in_parquet(concept_ids: List[int],
                      term_types: List[str],
@@ -91,6 +65,7 @@ def main(args: List[str]):
     query = create_query(engine=engine, settings=settings)
 
     total_count = 0
+    total_cost = 0
     with engine.connect() as connection:
         result_proxy = connection.execute(query)
         while True:
@@ -104,14 +79,16 @@ def main(args: List[str]):
                 concept_ids = [row.concept_id for row in chunk]
                 term_types = [row.term_type for row in chunk]
                 texts = [t[:settings.max_text_characters] for t in texts]
-                embeddings = create_embedding(texts)
+                embeddings = get_embedding_vectors(texts)
+                total_cost = total_cost + embeddings["usage"]["total_cost_usd"]
                 store_in_parquet(concept_ids=concept_ids,
                                  term_types=term_types,
-                                 embeddings=embeddings,
+                                 embeddings=embeddings["embeddings"],
                                  file_name=file_name)
             total_count += len(chunk)
             logging.info(f"Created {len(chunk)} embedding vectors, total: {total_count}")
     logging.info("Finished creating embedding vectors")
+    logging.info(f"Total cost: {total_cost}")
 
 
 if __name__ == "__main__":

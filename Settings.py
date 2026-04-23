@@ -18,8 +18,6 @@ class Settings:
     max_text_characters: int
     restrict_to_used_concepts: bool
 
-    schema: str
-    vector_table: str
     record_count_table: str
     store_type: str
 

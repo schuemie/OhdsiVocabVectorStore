@@ -21,15 +21,15 @@ def create_query(engine: Engine,
 
     concept = Table('concept',
                     metadata,
-                    schema=settings.schema,
+                    schema=os.getenv("VOCAB_SCHEMA"),
                     autoload_with=engine)
     concept_synonym = Table('concept_synonym',
                             metadata,
-                            schema=settings.schema,
+                            schema=os.getenv("VOCAB_SCHEMA"),
                             autoload_with=engine)
     concept_relationship = Table('concept_relationship',
                                  metadata,
-                                 schema=settings.schema,
+                                 schema=os.getenv("VOCAB_SCHEMA"),
                                  autoload_with=engine)
 
     standard_concepts = ['S']
@@ -52,7 +52,7 @@ def create_query(engine: Engine,
     if settings.restrict_to_used_concepts:
         concept_record_count = Table('concept_record_count',
                                      metadata,
-                                     schema=settings.schema,
+                                     schema=os.getenv("VOCAB_SCHEMA"),
                                      autoload_with=engine)
         query1 = query1.join(
             concept_record_count, concept.c.concept_id == concept_record_count.c.concept_id
@@ -129,9 +129,13 @@ def main(args: List[str]):
     open_log(os.path.join(settings.log_folder, "logDownloadTerms.txt"))
 
     logging.info("Starting downloading vocabularies")
-    source_engine = create_engine(os.getenv("vocab_connection_string"))
+    source_engine = create_engine(os.getenv("VOCAB_CONNECTION_STRING"))
     query = create_query(engine=source_engine,
                          settings=settings)
+
+    # Check if SQLite file already exists
+    if os.path.exists(settings.terms_db_path):
+        raise FileExistsError(f"SQLite database file already exists at {settings.terms_db_path}")
 
     target_engine = create_engine(f"sqlite:///{settings.terms_db_path}")
     metadata = MetaData()

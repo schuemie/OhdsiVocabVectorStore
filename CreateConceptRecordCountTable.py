@@ -22,7 +22,7 @@ def main(args: List[str]):
     os.makedirs(settings.log_folder, exist_ok=True)
     open_log(os.path.join(settings.log_folder, "logCreateConceptRecordCountTable.txt"))
 
-    engine = create_engine(os.getenv("vocab_connection_string"))
+    engine = create_engine(os.getenv("VOCAB_CONNECTION_STRING"))
     conn = engine.raw_connection()
     cursor = conn.cursor()
 
@@ -44,7 +44,7 @@ def main(args: List[str]):
         ON concept_id = descendant_concept_id
     GROUP BY ancestor_concept_id;
     """).format(
-        schema=sql.Identifier(settings.schema),
+        schema=sql.Identifier(os.getenv("VOCAB_SCHEMA")),
         table=sql.Identifier(settings.record_count_table)
     )
     cursor.execute(statement)
@@ -52,7 +52,7 @@ def main(args: List[str]):
 
     logging.info("Creating index")
     statement = sql.SQL("CREATE INDEX IF NOT EXISTS idx_concept_count_concept_id ON {schema}.{table} (concept_id);").format(
-        schema=sql.Identifier(settings.schema),
+        schema=sql.Identifier(os.getenv("VOCAB_SCHEMA")),
         table=sql.Identifier(settings.record_count_table)
     )
     cursor.execute(statement)
