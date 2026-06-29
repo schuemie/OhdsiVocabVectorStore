@@ -124,3 +124,27 @@ CREATE INDEX ON vocab_vectors_schema.concept_vector(concept_id);
 ```
 
 
+# Benchmark DuckDB VSS versus PGVector HNSW
+
+The `BenchmarkVectorSearch.py` script benchmarks nearest-neighbor search speed between DuckDB and PostgreSQL/PGVector.
+
+It works by:
+
+- Reading a deterministic sample from the existing PGVector embedding table
+- Holding out the next `query_count` vectors as a fixed query set
+- Normalizing the vectors so both engines compare cosine-equivalent neighborhoods with HNSW on L2 distance
+- Loading each sample size into a separate DuckDB database using the `vss` extension
+- Copying the same sample into a separate PGVector table and building an HNSW index there too
+- Running the same query vectors against each sample size and reporting setup time separately from search latency
+
+By default the benchmark runs the sizes `10000`, `25000`, `100000`, and `250000`, uses `1000` held-out query vectors, and fetches the top `10` neighbors for each query.
+
+Run it from the repository root:
+
+```bash
+python BenchmarkVectorSearch.py Settings.yaml --sizes 10000 25000 100000 250000 --query-count 1000 --top-k 10
+```
+
+The benchmark writes its cache and results under `Settings.yaml`'s `log_folder` in a `duckdb_pgvector_benchmark` subdirectory.
+
+
